@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install clang tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+
+      - name: Clang-Format check
+        run: |
+          set -e
+          files=$(git ls-files '*.c' '*.cc' '*.cpp' '*.cxx' '*.h' '*.hpp' '*.hh' '*.hxx' \
+            | grep -v '^components/' \
+            | grep -v '^managed_components/' \
+            | grep -v '^assets/')
+          if [ -n "$files" ]; then
+            clang-format --style=file --dry-run --Werror $files
+          fi
+
+      - name: build with ESP-IDF
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5
+          target: esp32c3
+          path: .
+          command: idf.py build

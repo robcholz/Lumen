@@ -1,0 +1,17 @@
+[package]
+name = "main_app"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+portable-atomic = { version = "1", features = ["require-cas", "critical-section"] }
+critical-section = { version = "1.2", default-features = false, features = ["restore-state-none"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"

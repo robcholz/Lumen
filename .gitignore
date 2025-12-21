@@ -1,0 +1,7 @@
+managed_components
+sdkconfig.old
+build
+cmake-build-debug
+.idea
+main/main_app/target
+venv

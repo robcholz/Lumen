@@ -1,0 +1,11 @@
+build
+.vscode
+managed_components
+dependencies.lock
+sdkconfig
+sdkconfig.old
+dist
+
+# Doc build artifacts
+docs/_build/
+docs/xml/

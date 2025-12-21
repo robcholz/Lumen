@@ -1,0 +1,62 @@
+menu "INA226"
+
+    menu "I2C Master"
+
+        orsource "$IDF_PATH/examples/common_components/env_caps/$IDF_TARGET/Kconfig.env_caps"
+        
+        config I2C_MASTER_SDA
+            int "SDA GPIO Num"
+            range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+            default 1 if  IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32H2
+            default 21 if IDF_TARGET_ESP32
+            default 5
+            help
+                GPIO number for I2C Master data line.
+
+        config I2C_MASTER_SCL
+            int "SCL GPIO Num"
+            range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+            default 2 if  IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32H2
+            default 22 if IDF_TARGET_ESP32
+            default 6
+            help
+                GPIO number for I2C Master clock line.
+
+        config I2C_MASTER_PORT_NUM
+            int "Port Number"
+            default 1 if SOC_I2C_NUM > 1
+            default 0
+            help
+                Port number for I2C Master device.
+
+        config I2C_MASTER_FREQUENCY
+            int "Master Frequency"
+            default 100000
+            help
+                I2C Speed of Master device.
+
+    endmenu
+
+    menu "INA226 Power Monitor Sensor"
+
+        config INA226_I2C_ADDRESS
+            hex
+            default 0x40
+            help
+                Hardware address of INA226
+
+        config INA226_SHUNT_RESISTOR_MILLIOHMS
+            int "Shunt Resistance"
+            default 100
+            help
+                Shunt resistor value in milliohms.
+
+        config INA226_MAX_CURRENT_AMPS
+            int "Max Current"
+            default 1
+            help
+                Max current in amperes.
+
+    endmenu
+
+endmenu

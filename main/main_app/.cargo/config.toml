@@ -1,0 +1,10 @@
+[build]
+target = "riscv32imc-unknown-none-elf"
+
+[target.riscv32imc-unknown-none-elf]
+linker = "riscv32-esp-elf-gcc"
+rustflags = [
+    "-C", "linker-flavor=gcc",
+    "-C", "panic=abort",
+    "-C", "relocation-model=static",
+]
