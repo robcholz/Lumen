@@ -29,15 +29,14 @@ jobs:
             clang-format --style=file --dry-run --Werror $files
           fi
 
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-
       - name: build with ESP-IDF
         uses: espressif/esp-idf-ci-action@v1
         with:
           esp_idf_version: v5.5
           target: esp32c3
           path: .
-          command: idf.py build
+          command: |
+            apt-get update
+            apt-get install -y cargo rustc
+            rustup target add riscv32imc-unknown-none-elf
+            idf.py build
