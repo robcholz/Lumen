@@ -25,15 +25,24 @@ jobs:
           esp_idf_version: v5.5
           target: esp32c3
           path: .
-          command: idf.py build
+          command: |
+            apt-get update
+            apt-get install -y curl ca-certificates build-essential
+            curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
+            export PATH="$HOME/.cargo/bin:$PATH"
+            rustup update stable
+            rustup target add riscv32imc-unknown-none-elf
+            idf.py build && (cd build && python -m esptool --chip esp32c3 merge_bin -o lumen_single_bin.bin $(cat flash_args))
 
       - name: locate firmware bin
         id: bin
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -f build/Lumen.bin ]]; then
-            echo "path=build/Lumen.bin" >> "$GITHUB_OUTPUT"
+          if [[ -f build/lumen_single_bin.bin ]]; then
+            versioned="build/lumen_single_bin_${GITHUB_REF_NAME}.bin"
+            mv build/lumen_single_bin.bin "$versioned"
+            echo "path=$versioned" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           mapfile -t bins < <(find build -maxdepth 2 -type f -name '*.bin' \
