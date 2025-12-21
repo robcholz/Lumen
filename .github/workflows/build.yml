@@ -32,9 +32,7 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
-          target: riscv32imc-unknown-none-elf
-          components: rust-src
+          toolchain: stable
 
       - name: build with ESP-IDF
         uses: espressif/esp-idf-ci-action@v1
