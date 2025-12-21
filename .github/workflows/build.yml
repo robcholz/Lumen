@@ -29,6 +29,13 @@ jobs:
             clang-format --style=file --dry-run --Werror $files
           fi
 
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          target: riscv32imc-unknown-none-elf
+          components: rust-src
+
       - name: build with ESP-IDF
         uses: espressif/esp-idf-ci-action@v1
         with:
