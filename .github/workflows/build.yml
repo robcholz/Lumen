@@ -37,6 +37,9 @@ jobs:
           path: .
           command: |
             apt-get update
-            apt-get install -y cargo rustc
+            apt-get install -y curl ca-certificates build-essential
+            curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
+            export PATH="$HOME/.cargo/bin:$PATH"
+            rustup update stable
             rustup target add riscv32imc-unknown-none-elf
             idf.py build
