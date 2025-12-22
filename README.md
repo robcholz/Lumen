@@ -122,6 +122,13 @@ keeping complexity inside the system rather than pushing it to the user.
 - The web flashing flow depends on browser WebUSB support.
 - CI has no cache or diff builds yet, so there is room for speed optimization.
 
+## Further Reading
+
+If you are interested in the UI system used in Lumen,
+you may find this article useful:
+
+- [Vision-UI: Designing a Lightweight UI System for Embedded Devices](https://www.robcholz.com/2025/11/16/vision-ui/)
+
 ## Project Status
 
 - [x] Hardware v2

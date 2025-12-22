@@ -121,6 +121,12 @@ Lumen 的目标很明确：
 - Web 烧录流程依赖浏览器对 WebUSB 的支持
 - CI没有cache和diff构建，仍有速度优化空间
 
+## 延伸阅读
+
+如果你对 Lumen 所使用的 UI 系统感兴趣，可以参考这篇文章：
+
+- [Vision-UI：一个面向嵌入式设备的轻量级 UI 系统设计](https://www.robcholz.com/2025/11/16/vision-ui/)
+
 ## 项目状态
 
 - [x] 硬件v2
