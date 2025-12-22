@@ -103,13 +103,13 @@ typedef struct vision_ui_list_icon { // NOLINT
 
     size_t footer_width; // NOLINT
     size_t footer_height; // NOLINT
-} vision_ui_icon_t;
+} vision_ui_icon_t; // NOLINT
 
 typedef struct vision_ui_font { // NOLINT
     const void* font; // NOLINT
     int8_t top_compensation; // NOLINT
     int8_t bottom_compensation; // NOLINT
-} vision_ui_font_t;
+} vision_ui_font_t; // NOLINT
 
 typedef enum vision_ui_action_t { // NOLINT
     UiActionNone,
@@ -117,7 +117,7 @@ typedef enum vision_ui_action_t { // NOLINT
     UiActionGoNext,
     UiActionEnter,
     UiActionExit,
-} vision_ui_action_t;
+} vision_ui_action_t; // NOLINT
 #else
 #include "vision_ui_item.h"
 #include "vision_ui_renderer.h"
@@ -138,6 +138,7 @@ typedef struct LumenSystemConfig {
     const uint8_t* motionIcon;
     const uint8_t* usbIcon;
     const uint8_t* statIcon;
+    const uint8_t* creeperIcon;
 } LumenSystemConfig;
 
 
@@ -155,6 +156,32 @@ typedef struct LumenUSBInfo {
 
 
 LumenUSBInfo lumenGetUSBInfo();
+
+typedef struct LumenEasterEgg {
+    const int16_t creeperWidth;
+    const int16_t creeperHeight;
+    const uint8_t* creeperLeft;
+    const uint8_t* creeperRight;
+    const uint8_t* creeperLeftBlowing;
+    const uint8_t* creeperRightBlowing;
+
+    const int16_t explosionWidth;
+    const int16_t explosionHeight;
+    const uint8_t* explosionEffects[15];
+
+    const int16_t particleWidth;
+    const int16_t particleHeight;
+    const uint8_t* particleEffects[5];
+} LumenEasterEgg;
+
+typedef struct LumenEasterEggState {
+    const int16_t dx;
+    const int16_t dy;
+    const bool ignite;
+} LumenEasterEggState;
+
+LumenEasterEgg lumenGetEasterEgg();
+LumenEasterEggState lumenGetEasterEggState();
 
 extern void vision_ui_step_render(); // NOLINT
 extern void vision_ui_allocator_set(void* (*allocator)(vision_alloc_op_t op, size_t size, size_t count, void* ptr)
