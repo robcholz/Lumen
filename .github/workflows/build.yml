@@ -2,7 +2,19 @@ name: CI
 
 on:
   push:
+    paths-ignore:
+      - '**/*.md'
+      - 'structure/**'
+      - 'hardware/**'
+      - 'docs/**'
+      - 'addon/**'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'structure/**'
+      - 'hardware/**'
+      - 'docs/**'
+      - 'addon/**'
 
 jobs:
   build:
