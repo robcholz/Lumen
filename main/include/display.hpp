@@ -22,9 +22,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <vision_ui_lib.h>
 
+#define LCD_H_RES 240
+#define LCD_V_RES 240
+
 extern void displayFrameRender();
 
 extern void displayInit(vision_ui_action_t (*callback)());
+
+extern void displayDriverExtensionRGBBitmapDraw(
+        int16_t x,
+        int16_t y,
+        int16_t width,
+        int16_t height,
+        const uint16_t* colorData
+);
 
 
 #endif // MAIN_INCLUDE_DISPLAY_HPP

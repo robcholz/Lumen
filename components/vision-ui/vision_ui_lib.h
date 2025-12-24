@@ -103,13 +103,13 @@ typedef struct vision_ui_list_icon { // NOLINT
 
     size_t footer_width; // NOLINT
     size_t footer_height; // NOLINT
-} vision_ui_icon_t; // NOLINT
+} vision_ui_icon_t;
 
 typedef struct vision_ui_font { // NOLINT
     const void* font; // NOLINT
     int8_t top_compensation; // NOLINT
     int8_t bottom_compensation; // NOLINT
-} vision_ui_font_t; // NOLINT
+} vision_ui_font_t;
 
 typedef enum vision_ui_action_t { // NOLINT
     UiActionNone,
@@ -117,7 +117,7 @@ typedef enum vision_ui_action_t { // NOLINT
     UiActionGoNext,
     UiActionEnter,
     UiActionExit,
-} vision_ui_action_t; // NOLINT
+} vision_ui_action_t;
 #else
 #include "vision_ui_item.h"
 #include "vision_ui_renderer.h"
@@ -139,8 +139,8 @@ typedef struct LumenSystemConfig {
     const uint8_t* usbIcon;
     const uint8_t* statIcon;
     const uint8_t* creeperIcon;
+    const uint8_t* minecraftSyncIcon;
 } LumenSystemConfig;
-
 
 LumenSystemInfo lumenGetSystemInfo();
 LumenSystemConfig lumenGetSystemConfig();
@@ -182,6 +182,14 @@ typedef struct LumenEasterEggState {
 
 LumenEasterEgg lumenGetEasterEgg();
 LumenEasterEggState lumenGetEasterEggState();
+
+typedef struct LumenMinecraftSync {
+    void (*initFunction)();
+    void (*loopFunction)();
+    void (*exitFunction)();
+} LumenMinecraftSync;
+
+LumenMinecraftSync lumenGetMinecraftSync();
 
 extern void vision_ui_step_render(); // NOLINT
 extern void vision_ui_allocator_set(void* (*allocator)(vision_alloc_op_t op, size_t size, size_t count, void* ptr)

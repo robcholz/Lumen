@@ -44,9 +44,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // DMA block lines (must divide V_RES)
 #define PARALLEL_LINES 128
 
-#define LCD_H_RES 240
-#define LCD_V_RES 240
-
 u8g2_t U8G2;
 uint8_t G_U8G2_BUF[LCD_H_RES * LCD_V_RES / 8];
 
@@ -102,6 +99,28 @@ static bool onColorTransDone(esp_lcd_panel_io_handle_t, esp_lcd_panel_io_event_d
     return false;
 }
 
+static constexpr uint16_t rgb565(const uint8_t r, const uint8_t g, const uint8_t b) {
+    return static_cast<uint16_t>(((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3));
+}
+
+static constexpr uint16_t U8G2_COLOR_OFF = rgb565(0, 0, 0);
+static constexpr uint16_t U8G2_COLOR_ON = rgb565(255, 255, 255);
+
+static void displayPrepareRGBBuffers() {
+    static constexpr int bufSize = sizeof(S_LINES) / sizeof(S_LINES[0]);
+    constexpr int neededBuffers = (LCD_V_RES + PARALLEL_LINES - 1) / PARALLEL_LINES;
+    constexpr int buffersToClear = std::min(bufSize, neededBuffers);
+    for (int i = 0; i < buffersToClear; ++i) {
+        if (!S_LINES[i]) {
+            continue;
+        }
+        while (S_BUF_BUSY[i]) {
+            taskYIELD();
+        }
+        std::fill_n(S_LINES[i], LCD_H_RES * PARALLEL_LINES, U8G2_COLOR_OFF);
+    }
+}
+
 static bool DISPLAY_READY = false;
 
 void displayFrameRender() {
@@ -111,6 +130,7 @@ void displayFrameRender() {
     const uint32_t start = esp_timer_get_time();
 
     vision_ui_driver_buffer_clear();
+    displayPrepareRGBBuffers();
     vision_ui_step_render();
 
     const uint32_t flash = esp_timer_get_time();
@@ -243,13 +263,6 @@ void displayInit(vision_ui_action_t (*callback)()) {
     DISPLAY_READY = true;
 }
 
-static constexpr uint16_t rgb565(const uint8_t r, const uint8_t g, const uint8_t b) {
-    return static_cast<uint16_t>(((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3));
-}
-
-static constexpr uint16_t U8G2_COLOR_OFF = rgb565(0, 0, 0);
-static constexpr uint16_t U8G2_COLOR_ON = rgb565(255, 255, 255);
-
 static uint16_t MONO_TO_RGB565[256][8];
 static bool LUT_READY = false;
 
@@ -292,14 +305,64 @@ void vision_ui_driver_buffer_send() {
             uint16_t* row = block + line * LCD_H_RES;
 
             for (int dstX = 0; dstX < LCD_H_RES; ++dstX) {
-                const int srcX = (LCD_H_RES - 1) - dstX;
-                row[dstX] = (rowPtr[srcX] & bitMask) ? U8G2_COLOR_ON : U8G2_COLOR_OFF;
+                // row[dstX] = (rowPtr[srcX] & bitMask) ? U8G2_COLOR_ON : U8G2_COLOR_OFF;
+                if (const int srcX = (LCD_H_RES - 1) - dstX; rowPtr[srcX] & bitMask) {
+                    row[dstX] = U8G2_COLOR_ON;
+                }
             }
         }
 
         S_BUF_BUSY[bufIdx] = true;
         ESP_ERROR_CHECK(esp_lcd_panel_draw_bitmap(PANEL, 0, startY, LCD_H_RES, startY + linesThisBlock, block));
         bufIdx ^= 1;
+    }
+}
+
+void displayDriverExtensionRGBBitmapDraw(
+        const int16_t x,
+        const int16_t y,
+        const int16_t width,
+        const int16_t height,
+        const uint16_t* colorData
+) {
+    if (!colorData || width <= 0 || height <= 0) {
+        return;
+    }
+
+    const int16_t x0 = std::max<int16_t>(0, x);
+    const int16_t y0 = std::max<int16_t>(0, y);
+    const int16_t x1 = std::min<int16_t>(LCD_H_RES, x + width);
+    const int16_t y1 = std::min<int16_t>(LCD_V_RES, y + height);
+    if (x0 >= x1 || y0 >= y1) {
+        return;
+    }
+
+    static constexpr int bufSize = sizeof(S_LINES) / sizeof(S_LINES[0]);
+    bool waited[bufSize] = {false};
+
+    for (int srcY = y0; srcY < y1; ++srcY) {
+        const int inY = srcY - y;
+        const int dstY = (LCD_V_RES - 1) - srcY;
+        const int bufIdx = dstY / PARALLEL_LINES;
+        if (bufIdx < 0 || bufIdx >= bufSize || !S_LINES[bufIdx]) {
+            continue;
+        }
+        if (!waited[bufIdx]) {
+            while (S_BUF_BUSY[bufIdx]) {
+                taskYIELD();
+            }
+            waited[bufIdx] = true;
+        }
+
+        const int bufYStart = bufIdx * PARALLEL_LINES;
+        const int rowOffset = (dstY - bufYStart) * LCD_H_RES;
+
+        for (int srcX = x0; srcX < x1; ++srcX) {
+            const int inX = srcX - x;
+            const int dstX = (LCD_H_RES - 1) - srcX;
+            const uint16_t pixel = colorData[inY * width + inX];
+            S_LINES[bufIdx][rowOffset + dstX] = pixel;
+        }
     }
 }
 
