@@ -16,3 +16,4 @@ dependencies:
   #   public: true
   espp/lsm6dso: ^1.0.31
   espp/filters: ^1.0.31
+  espressif/cjson: ^1.7.19
