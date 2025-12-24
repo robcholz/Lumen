@@ -12,27 +12,24 @@ import net.minecraft.world.GameMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Base64;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 public final class LumenSyncState {
     private static final Logger LOGGER = LoggerFactory.getLogger(LumenSyncState.class);
+    private static final int SKIN_HEIGHT = 120;
 
     private LumenSyncState() {
     }
 
-    public static Snapshot requestSnapshot(boolean includeSkin) {
+    public static Snapshot requestPlayerSnapshot() {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client == null) {
             return Snapshot.defaultSnapshot();
         }
         CompletableFuture<Snapshot> future = new CompletableFuture<>();
-        client.execute(() -> future.complete(captureSnapshot(client, includeSkin)));
+        client.execute(() -> future.complete(capturePlayerSnapshot(client)));
         try {
             return future.get(2, TimeUnit.SECONDS);
         } catch (Exception e) {
@@ -41,7 +38,22 @@ public final class LumenSyncState {
         }
     }
 
-    private static Snapshot captureSnapshot(MinecraftClient client, boolean includeSkin) {
+    public static SkinPayload requestSkinPayload() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client == null) {
+            return SkinPayload.empty();
+        }
+        CompletableFuture<SkinPayload> future = new CompletableFuture<>();
+        client.execute(() -> future.complete(captureSkinPayload(client)));
+        try {
+            return future.get(5, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            LOGGER.debug("Failed to capture skin payload", e);
+            return SkinPayload.empty();
+        }
+    }
+
+    private static Snapshot capturePlayerSnapshot(MinecraftClient client) {
         if (client.player == null) {
             return Snapshot.defaultSnapshot();
         }
@@ -50,64 +62,88 @@ public final class LumenSyncState {
         String mode = resolveMode(client);
         double health = player.getHealth();
         double maxHealth = player.getMaxHealth();
-        SkinData skin = includeSkin ? readSkin(client, player) : SkinData.empty();
+        return new Snapshot(mode, health, maxHealth);
+    }
 
-        return new Snapshot(mode, health, maxHealth, skin.width(), skin.height(), skin.base64());
+    private static SkinPayload captureSkinPayload(MinecraftClient client) {
+        if (client.player == null) {
+            return SkinPayload.empty();
+        }
+        return readSkin(client, client.player);
     }
 
     private static String resolveMode(MinecraftClient client) {
         if (client.interactionManager == null) {
-            return "survival";
+            return "-----";
         }
         GameMode mode = client.interactionManager.getCurrentGameMode();
         if (mode == null) {
-            return "survival";
+            return "-----";
         }
         return switch (mode) {
-            case CREATIVE -> "creative";
-            case ADVENTURE -> "adventure";
-            case SPECTATOR -> "spectator";
-            default -> "survival";
+            case CREATIVE -> "Creative";
+            case ADVENTURE -> "Adventure";
+            case SPECTATOR -> "Spectator";
+            default -> "Survival";
         };
     }
 
-    private static SkinData readSkin(MinecraftClient client, PlayerEntity player) {
+    private static byte[] toRGB565(NativeImage image) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        byte[] data = new byte[width * height * 2];
+        int idx = 0;
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int color = image.getColorArgb(x, y);
+                int r = (color >>> 16) & 0xFF;
+                int g = (color >>> 8) & 0xFF;
+                int b = color & 0xFF;
+                int value = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >>> 3);
+                data[idx++] = (byte) (value & 0xFF);
+                data[idx++] = (byte) ((value >>> 8) & 0xFF); // little-endian
+            }
+        }
+        return data;
+    }
+
+    private static NativeImage scaleImage(NativeImage image) {
+        int srcWidth = image.getWidth();
+        int srcHeight = image.getHeight();
+        int dstHeight = SKIN_HEIGHT;
+        int dstWidth = Math.max(1, Math.round((srcWidth * (float) dstHeight) / srcHeight));
+        NativeImage scaled = new NativeImage(dstWidth, dstHeight, true);
+        for (int y = 0; y < dstHeight; y++) {
+            int srcY = (y * srcHeight) / dstHeight;
+            for (int x = 0; x < dstWidth; x++) {
+                int srcX = (x * srcWidth) / dstWidth;
+                int color = image.getColorArgb(srcX, srcY);
+                scaled.setColorArgb(x, y, color);
+            }
+        }
+        return scaled;
+    }
+
+    private static SkinPayload readSkin(MinecraftClient client, PlayerEntity player) {
         if (!(player instanceof AbstractClientPlayerEntity clientPlayer)) {
-            return SkinData.empty();
+            return SkinPayload.empty();
         }
         SkinTextures textures = clientPlayer.getSkinTextures();
         if (textures == null || textures.texture() == null) {
-            return SkinData.empty();
+            return SkinPayload.empty();
         }
         AbstractTexture texture = client.getTextureManager().getTexture(textures.texture());
         if (texture instanceof ResourceTexture resourceTexture) {
             Optional<NativeImage> image = encodeResourceTexture(client, resourceTexture);
             if (image.isEmpty()) {
-                return SkinData.empty();
+                return SkinPayload.empty();
             }
             NativeImage frontView = image.get();
-            Path tempFile = null;
-            try {
-                tempFile = Files.createTempFile("lumen-skin-front", ".png");
-                frontView.writeTo(tempFile);
-                byte[] bytes = Files.readAllBytes(tempFile);
-                String base64 = Base64.getEncoder().encodeToString(bytes);
-                return new SkinData(frontView.getWidth(), frontView.getHeight(), base64);
-            } catch (IOException e) {
-                LOGGER.debug("Failed to encode front view skin", e);
-                return SkinData.empty();
-            } finally {
-                frontView.close();
-                if (tempFile != null) {
-                    try {
-                        Files.deleteIfExists(tempFile);
-                    } catch (IOException e) {
-                        LOGGER.debug("Failed to delete temp skin file", e);
-                    }
-                }
-            }
+            NativeImage scaled = scaleImage(frontView);
+            byte[] bytes = toRGB565(scaled);
+            return new SkinPayload(scaled.getWidth(), scaled.getHeight(), bytes);
         }
-        return SkinData.empty();
+        return SkinPayload.empty();
     }
 
     private static Optional<NativeImage> encodeFrontView(NativeImage skin) {
@@ -233,19 +269,35 @@ public final class LumenSyncState {
     public record Snapshot(
             String mode,
             double health,
-            double maxHealth,
-            int skinWidth,
-            int skinHeight,
-            String skinBase64
+            double maxHealth
     ) {
         public static Snapshot defaultSnapshot() {
-            return new Snapshot("survival", 0.0, 0.0, 0, 0, "");
+            return new Snapshot("-----", 0.0, 0.0);
         }
     }
 
-    private record SkinData(int width, int height, String base64) {
-        public static SkinData empty() {
-            return new SkinData(0, 0, "");
+    public record SkinPayload(int width, int height, byte[] rgb565) {
+        public static SkinPayload empty() {
+            return new SkinPayload(0, 0, new byte[0]);
+        }
+
+        public byte[] toWireBytes() {
+            if (rgb565.length == 0) {
+                return new byte[0];
+            }
+            byte[] data = new byte[4 + rgb565.length];
+            data[0] = (byte) (width & 0xFF);
+            data[1] = (byte) ((width >>> 8) & 0xFF);
+            data[2] = (byte) (height & 0xFF);
+            data[3] = (byte) ((height >>> 8) & 0xFF);
+
+            for (int i = 0; i < rgb565.length; i += 2) {
+                byte lsb = rgb565[i];
+                byte msb = rgb565[i + 1];
+                data[4 + i] = msb;
+                data[4 + i + 1] = lsb;
+            }
+            return data;
         }
     }
 }

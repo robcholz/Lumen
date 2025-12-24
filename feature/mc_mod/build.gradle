@@ -37,6 +37,7 @@ dependencies {
 
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
     modImplementation "com.terraformersmc:modmenu:${project.modmenu_version}"
+    implementation "com.fazecast:jSerialComm:2.11.0"
 }
 
 processResources {
