@@ -318,6 +318,8 @@ void vision_ui_driver_buffer_send() {
     }
 }
 
+static uint16_t S_PIXEL_SCALE = 1;
+
 void displayDriverExtensionRGBBitmapDraw(
         const int16_t x,
         const int16_t y,
@@ -329,10 +331,55 @@ void displayDriverExtensionRGBBitmapDraw(
         return;
     }
 
-    const int16_t x0 = std::max<int16_t>(0, x);
-    const int16_t y0 = std::max<int16_t>(0, y);
-    const int16_t x1 = std::min<int16_t>(LCD_H_RES, x + width);
-    const int16_t y1 = std::min<int16_t>(LCD_V_RES, y + height);
+    const int scale = std::max<int>(1, S_PIXEL_SCALE);
+    if (scale == 1) {
+        const int16_t x0 = std::max<int16_t>(0, x);
+        const int16_t y0 = std::max<int16_t>(0, y);
+        const int16_t x1 = std::min<int16_t>(LCD_H_RES, x + width);
+        const int16_t y1 = std::min<int16_t>(LCD_V_RES, y + height);
+        if (x0 >= x1 || y0 >= y1) {
+            return;
+        }
+
+        static constexpr int bufSize = sizeof(S_LINES) / sizeof(S_LINES[0]);
+        bool waited[bufSize] = {false};
+
+        for (int srcY = y0; srcY < y1; ++srcY) {
+            const int inY = srcY - y;
+            const int dstY = (LCD_V_RES - 1) - srcY;
+            const int bufIdx = dstY / PARALLEL_LINES;
+            if (bufIdx < 0 || bufIdx >= bufSize || !S_LINES[bufIdx]) {
+                continue;
+            }
+            if (!waited[bufIdx]) {
+                while (S_BUF_BUSY[bufIdx]) {
+                    taskYIELD();
+                }
+                waited[bufIdx] = true;
+            }
+
+            const int bufYStart = bufIdx * PARALLEL_LINES;
+            const int rowOffset = (dstY - bufYStart) * LCD_H_RES;
+
+            for (int srcX = x0; srcX < x1; ++srcX) {
+                const int inX = srcX - x;
+                const int dstX = (LCD_H_RES - 1) - srcX;
+                const uint16_t pixel = colorData[inY * width + inX];
+                S_LINES[bufIdx][rowOffset + dstX] = pixel;
+            }
+        }
+        return;
+    }
+
+    const int32_t scaledX = static_cast<int32_t>(x) * scale;
+    const int32_t scaledY = static_cast<int32_t>(y) * scale;
+    const int32_t scaledW = static_cast<int32_t>(width) * scale;
+    const int32_t scaledH = static_cast<int32_t>(height) * scale;
+
+    const int32_t x0 = std::max<int32_t>(0, scaledX);
+    const int32_t y0 = std::max<int32_t>(0, scaledY);
+    const int32_t x1 = std::min<int32_t>(LCD_H_RES, scaledX + scaledW);
+    const int32_t y1 = std::min<int32_t>(LCD_V_RES, scaledY + scaledH);
     if (x0 >= x1 || y0 >= y1) {
         return;
     }
@@ -340,10 +387,11 @@ void displayDriverExtensionRGBBitmapDraw(
     static constexpr int bufSize = sizeof(S_LINES) / sizeof(S_LINES[0]);
     bool waited[bufSize] = {false};
 
-    for (int srcY = y0; srcY < y1; ++srcY) {
-        const int inY = srcY - y;
-        const int dstY = (LCD_V_RES - 1) - srcY;
-        const int bufIdx = dstY / PARALLEL_LINES;
+    for (int32_t dstY = y0; dstY < y1; ++dstY) {
+        const int inY = static_cast<int>((dstY - scaledY) / scale);
+        const int dstRow = static_cast<int>(dstY);
+        const int rotatedY = (LCD_V_RES - 1) - dstRow;
+        const int bufIdx = rotatedY / PARALLEL_LINES;
         if (bufIdx < 0 || bufIdx >= bufSize || !S_LINES[bufIdx]) {
             continue;
         }
@@ -355,15 +403,115 @@ void displayDriverExtensionRGBBitmapDraw(
         }
 
         const int bufYStart = bufIdx * PARALLEL_LINES;
-        const int rowOffset = (dstY - bufYStart) * LCD_H_RES;
+        const int rowOffset = (rotatedY - bufYStart) * LCD_H_RES;
 
-        for (int srcX = x0; srcX < x1; ++srcX) {
-            const int inX = srcX - x;
-            const int dstX = (LCD_H_RES - 1) - srcX;
+        for (int32_t dstX = x0; dstX < x1; ++dstX) {
+            const int inX = static_cast<int>((dstX - scaledX) / scale);
+            const int rotatedX = (LCD_H_RES - 1) - static_cast<int>(dstX);
             const uint16_t pixel = colorData[inY * width + inX];
-            S_LINES[bufIdx][rowOffset + dstX] = pixel;
+            S_LINES[bufIdx][rowOffset + rotatedX] = pixel;
         }
     }
+}
+
+extern void displayDriverExtensionRGBBitmapAlphaDraw(
+        const int16_t x,
+        const int16_t y,
+        const int16_t width,
+        const int16_t height,
+        const uint16_t* colorData
+) {
+    if (!colorData || width <= 0 || height <= 0) {
+        return;
+    }
+
+    const int scale = std::max<int>(1, S_PIXEL_SCALE);
+    if (scale == 1) {
+        const int16_t x0 = std::max<int16_t>(0, x);
+        const int16_t y0 = std::max<int16_t>(0, y);
+        const int16_t x1 = std::min<int16_t>(LCD_H_RES, x + width);
+        const int16_t y1 = std::min<int16_t>(LCD_V_RES, y + height);
+        if (x0 >= x1 || y0 >= y1) {
+            return;
+        }
+
+        static constexpr int bufSize = sizeof(S_LINES) / sizeof(S_LINES[0]);
+        bool waited[bufSize] = {false};
+
+        for (int srcY = y0; srcY < y1; ++srcY) {
+            const int inY = srcY - y;
+            const int dstY = (LCD_V_RES - 1) - srcY;
+            const int bufIdx = dstY / PARALLEL_LINES;
+            if (bufIdx < 0 || bufIdx >= bufSize || !S_LINES[bufIdx]) {
+                continue;
+            }
+            if (!waited[bufIdx]) {
+                while (S_BUF_BUSY[bufIdx]) {
+                    taskYIELD();
+                }
+                waited[bufIdx] = true;
+            }
+
+            const int bufYStart = bufIdx * PARALLEL_LINES;
+            const int rowOffset = (dstY - bufYStart) * LCD_H_RES;
+
+            for (int srcX = x0; srcX < x1; ++srcX) {
+                const int inX = srcX - x;
+                const int dstX = (LCD_H_RES - 1) - srcX;
+                if (const uint16_t pixel = colorData[inY * width + inX]; pixel != U8G2_COLOR_OFF) {
+                    S_LINES[bufIdx][rowOffset + dstX] = pixel;
+                }
+            }
+        }
+        return;
+    }
+
+    const int32_t scaledX = static_cast<int32_t>(x) * scale;
+    const int32_t scaledY = static_cast<int32_t>(y) * scale;
+    const int32_t scaledW = static_cast<int32_t>(width) * scale;
+    const int32_t scaledH = static_cast<int32_t>(height) * scale;
+
+    const int32_t x0 = std::max<int32_t>(0, scaledX);
+    const int32_t y0 = std::max<int32_t>(0, scaledY);
+    const int32_t x1 = std::min<int32_t>(LCD_H_RES, scaledX + scaledW);
+    const int32_t y1 = std::min<int32_t>(LCD_V_RES, scaledY + scaledH);
+    if (x0 >= x1 || y0 >= y1) {
+        return;
+    }
+
+    static constexpr int bufSize = sizeof(S_LINES) / sizeof(S_LINES[0]);
+    bool waited[bufSize] = {false};
+
+    for (int32_t dstY = y0; dstY < y1; ++dstY) {
+        const int inY = static_cast<int>((dstY - scaledY) / scale);
+        const int dstRow = static_cast<int>(dstY);
+        const int rotatedY = (LCD_V_RES - 1) - dstRow;
+        const int bufIdx = rotatedY / PARALLEL_LINES;
+        if (bufIdx < 0 || bufIdx >= bufSize || !S_LINES[bufIdx]) {
+            continue;
+        }
+        if (!waited[bufIdx]) {
+            while (S_BUF_BUSY[bufIdx]) {
+                taskYIELD();
+            }
+            waited[bufIdx] = true;
+        }
+
+        const int bufYStart = bufIdx * PARALLEL_LINES;
+        const int rowOffset = (rotatedY - bufYStart) * LCD_H_RES;
+
+        for (int32_t dstX = x0; dstX < x1; ++dstX) {
+            const int inX = static_cast<int>((dstX - scaledX) / scale);
+            const int rotatedX = (LCD_H_RES - 1) - static_cast<int>(dstX);
+            if (const uint16_t pixel = colorData[inY * width + inX]; pixel != U8G2_COLOR_OFF) {
+                S_LINES[bufIdx][rowOffset + rotatedX] = pixel;
+            }
+        }
+    }
+}
+
+void displayDriverExtensionPixelScale(const uint16_t scale) {
+    S_PIXEL_SCALE = scale > 0 ? scale : 1;
 }
 
 void* vision_ui_driver_buffer_pointer_get() {

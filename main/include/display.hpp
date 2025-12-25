@@ -37,5 +37,15 @@ extern void displayDriverExtensionRGBBitmapDraw(
         const uint16_t* colorData
 );
 
+extern void displayDriverExtensionRGBBitmapAlphaDraw(
+        int16_t x,
+        int16_t y,
+        int16_t width,
+        int16_t height,
+        const uint16_t* colorData
+);
+
+extern void displayDriverExtensionPixelScale(uint16_t scale);
+
 
 #endif // MAIN_INCLUDE_DISPLAY_HPP

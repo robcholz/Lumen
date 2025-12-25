@@ -1,6 +1,8 @@
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <stdint.h>
 #include <string>
 #include <tgmath.h>
@@ -2014,7 +2016,14 @@ namespace {
     constexpr size_t K_MINECRAFT_SYNC_SKIN_MAX = LCD_H_RES * LCD_V_RES * 2 + 4;
 
     struct MinecraftSyncState {
-        std::string mode = "-----";
+        enum class Mode {
+            Creative,
+            Survival,
+            Spectator,
+            Adventure,
+            None,
+        } mode;
+        std::string name;
         float health = 0.0F;
         float maxHealth = 0.0F;
         bool hasState = false;
@@ -2033,16 +2042,6 @@ namespace {
 
     uint16_t readU16Le(const uint8_t* data) {
         return static_cast<uint16_t>(data[0] | (static_cast<uint16_t>(data[1]) << 8));
-    }
-
-    float parseJsonFloat(const cJSON* item, const float fallback) {
-        if (cJSON_IsNumber(item)) {
-            return static_cast<float>(item->valuedouble);
-        }
-        if (cJSON_IsString(item) && item->valuestring) {
-            return static_cast<float>(std::strtof(item->valuestring, nullptr));
-        }
-        return fallback;
     }
 
     void minecraftSyncJsonHandler(const uint8_t* data, const size_t size) {
@@ -2074,12 +2073,28 @@ namespace {
         }
 
         if (const cJSON* mode = cJSON_GetObjectItem(root, "mode"); cJSON_IsString(mode) && mode->valuestring) {
-            S_MINECRAFT_SYNC.mode = mode->valuestring;
+            if (!strcmp(mode->valuestring, "Survival")) {
+                S_MINECRAFT_SYNC.mode = MinecraftSyncState::Mode::Survival;
+            } else if (!strcmp(mode->valuestring, "Spectator")) {
+                S_MINECRAFT_SYNC.mode = MinecraftSyncState::Mode::Spectator;
+            } else if (!strcmp(mode->valuestring, "Creative")) {
+                S_MINECRAFT_SYNC.mode = MinecraftSyncState::Mode::Creative;
+            } else if (!strcmp(mode->valuestring, "Adventure")) {
+                S_MINECRAFT_SYNC.mode = MinecraftSyncState::Mode::Adventure;
+            } else {
+                S_MINECRAFT_SYNC.mode = MinecraftSyncState::Mode::None;
+            }
         }
 
-        S_MINECRAFT_SYNC.health = parseJsonFloat(cJSON_GetObjectItem(root, "health"), S_MINECRAFT_SYNC.health);
-        S_MINECRAFT_SYNC.maxHealth =
-                parseJsonFloat(cJSON_GetObjectItem(root, "max_health"), S_MINECRAFT_SYNC.maxHealth);
+        if (const cJSON* name = cJSON_GetObjectItem(root, "name"); cJSON_IsString(name) && name->valuestring) {
+            S_MINECRAFT_SYNC.name = name->valuestring;
+        }
+        if (const cJSON* health = cJSON_GetObjectItem(root, "health"); cJSON_IsNumber(health)) {
+            S_MINECRAFT_SYNC.health = health->valuedouble;
+        }
+        if (const cJSON* maxHealth = cJSON_GetObjectItem(root, "max_health"); cJSON_IsNumber(maxHealth)) {
+            S_MINECRAFT_SYNC.maxHealth = maxHealth->valuedouble;
+        }
         S_MINECRAFT_SYNC.hasState = true;
 
         cJSON_Delete(root);
@@ -2134,9 +2149,245 @@ namespace {
         S_MINECRAFT_SYNC.skinBuffer.clear();
     }
 
+    void rgb565ArrayToBe(uint16_t* data, const size_t count) {
+        for (size_t i = 0; i < count; ++i) {
+            const uint16_t v = data[i];
+            data[i] = static_cast<uint16_t>((v >> 8) | (v << 8));
+        }
+    }
+
+    uint16_t CONTAINER[] = {
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x2945,
+            0x2945, 0x0000, 0x2945, 0x2945, 0x0000, 0x0000, 0x0000, 0x2945, 0x2945, 0x2945, 0x2945, 0x2945,
+            0x2945, 0x2945, 0x0000, 0x0000, 0x2945, 0x2945, 0x2945, 0x2945, 0x2945, 0x2945, 0x2945, 0x0000,
+            0x0000, 0x2945, 0x2945, 0x2945, 0x2945, 0x2945, 0x2945, 0x2945, 0x0000, 0x0000, 0x0000, 0x2945,
+            0x2945, 0x2945, 0x2945, 0x2945, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x2945, 0x2945, 0x2945,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x2945, 0x0000, 0x0000, 0x0000, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+    };
+
+    uint16_t CONTAINER_BLINKING[] = {
+            0x0000, 0x0000, 0xFFFF, 0xFFFF, 0x0000, 0xFFFF, 0xFFFF, 0x0000, 0x0000, 0x0000, 0xFFFF, 0x2945,
+            0x2945, 0xFFFF, 0x2945, 0x2945, 0xFFFF, 0x0000, 0xFFFF, 0x2945, 0x2945, 0x2945, 0x2945, 0x2945,
+            0x2945, 0x2945, 0xFFFF, 0xFFFF, 0x2945, 0x2945, 0x2945, 0x2945, 0x2945, 0x2945, 0x2945, 0xFFFF,
+            0xFFFF, 0x2945, 0x2945, 0x2945, 0x2945, 0x2945, 0x2945, 0x2945, 0xFFFF, 0x0000, 0xFFFF, 0x2945,
+            0x2945, 0x2945, 0x2945, 0x2945, 0xFFFF, 0x0000, 0x0000, 0x0000, 0xFFFF, 0x2945, 0x2945, 0x2945,
+            0xFFFF, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xFFFF, 0x2945, 0xFFFF, 0x0000, 0x0000, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0xFFFF, 0x0000, 0x0000, 0x0000, 0x0000,
+    };
+
+    uint16_t HARDCORE_HALF_BLINKING[] = {
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xFD14,
+            0xFD14, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xFD14, 0xB471, 0xFD14, 0xFD14, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0xFD14, 0xB471, 0xB471, 0xFD14, 0x0000, 0x0000, 0x0000, 0x0000,
+            0x0000, 0xDD14, 0xFD14, 0xB471, 0xFD14, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xDD14,
+            0xFD14, 0xFD14, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xDD14, 0xFD14, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xDD14, 0x0000, 0x0000, 0x0000, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+    };
+    uint16_t HARDCORE_HALF[] = {
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xF882,
+            0xF882, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xF882, 0x6020, 0xF882, 0xF882, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0xF882, 0x6020, 0x6020, 0xF882, 0x0000, 0x0000, 0x0000, 0x0000,
+            0x0000, 0xB882, 0xF882, 0x6020, 0xF882, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xB882,
+            0xF882, 0xF882, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xB882, 0xF882, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xB882, 0x0000, 0x0000, 0x0000, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+    };
+    uint16_t HARDCORE_FULL_BLINKING[] = {
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xFD14,
+            0xFD14, 0x0000, 0xFD14, 0xFD14, 0x0000, 0x0000, 0x0000, 0xFD14, 0xB471, 0xFD14, 0xFD14, 0xFD14,
+            0xB471, 0xFD14, 0x0000, 0x0000, 0xFD14, 0xB471, 0xB471, 0xFD14, 0xB471, 0xB471, 0xFD14, 0x0000,
+            0x0000, 0xDD14, 0xFD14, 0xB471, 0xFD14, 0xB471, 0xFD14, 0xDD14, 0x0000, 0x0000, 0x0000, 0xDD14,
+            0xFD14, 0xFD14, 0xFD14, 0xDD14, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xDD14, 0xFD14, 0xDD14,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xDD14, 0x0000, 0x0000, 0x0000, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+    };
+    uint16_t HARDCORE_FULL[] = {
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xF882,
+            0xF882, 0x0000, 0xF882, 0xF882, 0x0000, 0x0000, 0x0000, 0xF882, 0x6020, 0xF882, 0xF882, 0xF882,
+            0x6020, 0xF882, 0x0000, 0x0000, 0xF882, 0x6020, 0x6020, 0xF882, 0x6020, 0x6020, 0xF882, 0x0000,
+            0x0000, 0xB882, 0xF882, 0x6020, 0xF882, 0x6020, 0xF882, 0xB882, 0x0000, 0x0000, 0x0000, 0xB882,
+            0xF882, 0xF882, 0xF882, 0xB882, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xB882, 0xF882, 0xB882,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xB882, 0x0000, 0x0000, 0x0000, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+    };
+    uint16_t HALF_BLINKING[] = {
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xFD14,
+            0xFD14, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xFD14, 0xFF1C, 0xFD14, 0xFD14, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0xFD14, 0xFD14, 0xFD14, 0xFD14, 0x0000, 0x0000, 0x0000, 0x0000,
+            0x0000, 0xDD14, 0xFD14, 0xFD14, 0xFD14, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xDD14,
+            0xFD14, 0xFD14, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xDD14, 0xFD14, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xDD14, 0x0000, 0x0000, 0x0000, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+    };
+    uint16_t HALF[] = {
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xF882,
+            0xF882, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xF882, 0xFE59, 0xF882, 0xF882, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0xF882, 0xF882, 0xF882, 0xF882, 0x0000, 0x0000, 0x0000, 0x0000,
+            0x0000, 0xB882, 0xF882, 0xF882, 0xF882, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xB882,
+            0xF882, 0xF882, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xB882, 0xF882, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xB882, 0x0000, 0x0000, 0x0000, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+    };
+    uint16_t FULL_BLINKING[] = {
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xFD14,
+            0xFD14, 0x0000, 0xFD14, 0xFD14, 0x0000, 0x0000, 0x0000, 0xFD14, 0xFF1C, 0xFD14, 0xFD14, 0xFD14,
+            0xFD14, 0xFD14, 0x0000, 0x0000, 0xFD14, 0xFD14, 0xFD14, 0xFD14, 0xFD14, 0xFD14, 0xFD14, 0x0000,
+            0x0000, 0xDD14, 0xFD14, 0xFD14, 0xFD14, 0xFD14, 0xFD14, 0xDD14, 0x0000, 0x0000, 0x0000, 0xDD14,
+            0xFD14, 0xFD14, 0xFD14, 0xDD14, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xDD14, 0xFD14, 0xDD14,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xDD14, 0x0000, 0x0000, 0x0000, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+    };
+    uint16_t FULL[] = {
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xF882,
+            0xF882, 0x0000, 0xF882, 0xF882, 0x0000, 0x0000, 0x0000, 0xF882, 0xFE59, 0xF882, 0xF882, 0xF882,
+            0xF882, 0xF882, 0x0000, 0x0000, 0xF882, 0xF882, 0xF882, 0xF882, 0xF882, 0xF882, 0xF882, 0x0000,
+            0x0000, 0xB882, 0xF882, 0xF882, 0xF882, 0xF882, 0xF882, 0xB882, 0x0000, 0x0000, 0x0000, 0xB882,
+            0xF882, 0xF882, 0xF882, 0xB882, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xB882, 0xF882, 0xB882,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xB882, 0x0000, 0x0000, 0x0000, 0x0000,
+            0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+    };
+
+    void minecraftSyncDrawHeart(
+            const int x,
+            const int y,
+            const bool isContainer,
+            const bool hardcore,
+            const bool blinking,
+            const bool halfHeart
+    ) {
+        static constexpr auto width = 9;
+        static constexpr auto height = 9;
+        if (isContainer) {
+            if (blinking) {
+                displayDriverExtensionRGBBitmapDraw(x, y, width, height, CONTAINER_BLINKING);
+            } else {
+                displayDriverExtensionRGBBitmapDraw(x, y, width, height, CONTAINER);
+            }
+            return;
+        }
+        if (hardcore) {
+            if (halfHeart) {
+                if (blinking) {
+                    displayDriverExtensionRGBBitmapAlphaDraw(x, y, width, height, HARDCORE_HALF_BLINKING);
+                } else {
+                    displayDriverExtensionRGBBitmapAlphaDraw(x, y, width, height, HARDCORE_HALF);
+                }
+            } else {
+                if (blinking) {
+                    displayDriverExtensionRGBBitmapAlphaDraw(x, y, width, height, HARDCORE_FULL_BLINKING);
+                } else {
+                    displayDriverExtensionRGBBitmapAlphaDraw(x, y, width, height, HARDCORE_FULL);
+                }
+            }
+        } else {
+            if (halfHeart) {
+                if (blinking) {
+                    displayDriverExtensionRGBBitmapAlphaDraw(x, y, width, height, HALF_BLINKING);
+                } else {
+                    displayDriverExtensionRGBBitmapAlphaDraw(x, y, width, height, HALF);
+                }
+            } else {
+                if (blinking) {
+                    displayDriverExtensionRGBBitmapAlphaDraw(x, y, width, height, FULL_BLINKING);
+                } else {
+                    displayDriverExtensionRGBBitmapAlphaDraw(x, y, width, height, FULL);
+                }
+            }
+        }
+    }
+
+    constexpr uint16_t SCALE = 2;
+
+    void minecraftSyncDrawHeartHud(
+            const uint16_t x,
+            const uint16_t y,
+            const MinecraftSyncState::Mode mode,
+            const float health,
+            const float prevHealth,
+            const float maxHealth
+    ) {
+        if (mode == MinecraftSyncState::Mode::Spectator || mode == MinecraftSyncState::Mode::Creative) {
+            return;
+        }
+
+        const int totalHearts = static_cast<int>(std::ceil(maxHealth / 2.0f));
+        if (totalHearts <= 0) {
+            return;
+        }
+
+        const uint32_t now = vision_ui_driver_ticks_ms_get();
+
+        const int lastHealth = static_cast<int>(std::ceil(prevHealth));
+        const int currentHealth = static_cast<int>(std::ceil(health));
+
+        static int stableHealth = -1;
+        static uint32_t blinkUntilMs = 0;
+        static uint32_t nextBlinkFlipMs = 0;
+        static bool blinkPhase = false;
+        static bool wasDamage = false;
+
+        if (stableHealth < 0) {
+            stableHealth = lastHealth;
+        }
+
+        if (currentHealth != stableHealth) {
+            wasDamage = (currentHealth < stableHealth);
+            stableHealth = currentHealth;
+            blinkUntilMs = now + 900;
+            nextBlinkFlipMs = now;
+            blinkPhase = true;
+        }
+
+        const bool blinking = now < blinkUntilMs;
+        if (blinking && now >= nextBlinkFlipMs) {
+            blinkPhase = !blinkPhase;
+            nextBlinkFlipMs = now + 100;
+        }
+
+        const bool lowHpShake = (lastHealth <= 4);
+
+        displayDriverExtensionPixelScale(SCALE);
+
+        static constexpr int lines = 10;
+        const bool hardcore = (S_MINECRAFT_SYNC.mode == MinecraftSyncState::Mode::Adventure);
+
+        for (int l = totalHearts - 1; l >= 0; --l) {
+            const int row = l / 10;
+            const int col = l % 10;
+
+            const int heartX = static_cast<int>(x) + col * 8;
+            int heartY = static_cast<int>(y) - row * lines;
+
+            if (lowHpShake) {
+                const uint32_t h = (now / 80u) + static_cast<uint32_t>(l * 131u);
+                heartY += static_cast<int>(h & 1u);
+            }
+
+            const int q = l * 2;
+
+            minecraftSyncDrawHeart(heartX, heartY, true, hardcore, blinking && blinkPhase, false);
+
+            const bool had = (q < lastHealth);
+            const bool has = (q < currentHealth);
+
+            if (has) {
+                const bool halfNow = (q + 1 == currentHealth);
+                minecraftSyncDrawHeart(heartX, heartY, false, hardcore, false, halfNow);
+            }
+
+            if (wasDamage && blinking && blinkPhase && had && !has) {
+                const bool halfOld = (q + 1 == lastHealth);
+                minecraftSyncDrawHeart(heartX, heartY, false, hardcore, true, halfOld);
+            }
+        }
+
+        displayDriverExtensionPixelScale(1);
+    }
+
     void minecraftSyncDraw() {
         static constexpr auto skinY = 20;
-        static constexpr auto textY = LCD_V_RES - 20;
         if (!S_MINECRAFT_SYNC.hasState && !S_MINECRAFT_SYNC.skinReady) {
             return;
         }
@@ -2153,29 +2404,35 @@ namespace {
         }
 
         if (S_MINECRAFT_SYNC.hasState) {
-            char modeLine[32] = {};
-            char healthLine[32] = {};
+            char playerName[32] = {};
 
-            std::snprintf(modeLine, sizeof(modeLine), "%s", S_MINECRAFT_SYNC.mode.c_str());
-            std::snprintf(
-                    healthLine,
-                    sizeof(healthLine),
-                    "%.1f/%.1f",
-                    static_cast<double>(S_MINECRAFT_SYNC.health),
-                    static_cast<double>(S_MINECRAFT_SYNC.maxHealth)
-            );
+            std::snprintf(playerName, sizeof(playerName), "%s", S_MINECRAFT_SYNC.name.c_str());
 
-            const uint16_t modeWidth = vision_ui_driver_str_width_get(modeLine);
-            const uint16_t healthWidth = vision_ui_driver_str_width_get(healthLine);
+            const uint16_t nameWidth = vision_ui_driver_str_width_get(playerName);
             const uint16_t lineHeight = vision_ui_driver_str_height_get();
 
-            const int16_t modeX = static_cast<int16_t>((LCD_H_RES - modeWidth) / 2);
-            const int16_t healthX = static_cast<int16_t>((LCD_H_RES - healthWidth) / 2);
-            static constexpr int16_t healthY = textY;
-            const int16_t modeY = static_cast<int16_t>(healthY - lineHeight - 2);
+            const int16_t nameX = static_cast<int16_t>((LCD_H_RES - nameWidth) / 2);
+            static constexpr int16_t healthY = LCD_V_RES - 20;
+            const int16_t nameY = static_cast<int16_t>(healthY - lineHeight - 2);
 
-            vision_ui_driver_str_draw(static_cast<uint16_t>(modeX), static_cast<uint16_t>(modeY), modeLine);
-            vision_ui_driver_str_draw(static_cast<uint16_t>(healthX), healthY, healthLine);
+            vision_ui_driver_str_draw(static_cast<uint16_t>(nameX), static_cast<uint16_t>(nameY), playerName);
+            static bool once = false;
+            static float prevHealth;
+            if (!once) {
+                prevHealth = S_MINECRAFT_SYNC.health;
+                once = true;
+            }
+            static constexpr int16_t healthXLogic = 40 / SCALE;
+            static constexpr int16_t healthYLogic = 210 / SCALE;
+            minecraftSyncDrawHeartHud(
+                    healthXLogic,
+                    healthYLogic,
+                    S_MINECRAFT_SYNC.mode,
+                    S_MINECRAFT_SYNC.health,
+                    prevHealth,
+                    S_MINECRAFT_SYNC.maxHealth
+            );
+            prevHealth = S_MINECRAFT_SYNC.health;
         }
     }
 } // namespace
@@ -2187,8 +2444,21 @@ LumenMinecraftSync lumenGetMinecraftSync() {
                         if (!S_MINECRAFT_SYNC.serialAttached) {
                             serialPackAttachHandler("sync", minecraftSyncJsonHandler);
                             serialPackAttachHandler("sync/skin", minecraftSyncSkinHandler);
-                            S_MINECRAFT_SYNC.skinBuffer.reserve(1024 * 10);
+                            S_MINECRAFT_SYNC.skinBuffer.reserve((1024 * 10) / sizeof(uint16_t));
                             S_MINECRAFT_SYNC.serialAttached = true;
+
+                            rgb565ArrayToBe(CONTAINER, std::size(CONTAINER));
+                            rgb565ArrayToBe(CONTAINER_BLINKING, std::size(CONTAINER_BLINKING));
+                            rgb565ArrayToBe(HARDCORE_HALF_BLINKING, std::size(HARDCORE_HALF_BLINKING));
+                            rgb565ArrayToBe(HARDCORE_HALF, std::size(HARDCORE_HALF));
+                            rgb565ArrayToBe(HARDCORE_FULL_BLINKING, std::size(HARDCORE_FULL_BLINKING));
+                            rgb565ArrayToBe(HARDCORE_FULL, std::size(HARDCORE_FULL));
+                            rgb565ArrayToBe(FULL_BLINKING, std::size(FULL_BLINKING));
+                            rgb565ArrayToBe(FULL, std::size(FULL));
+                            rgb565ArrayToBe(HALF, std::size(HALF));
+                            rgb565ArrayToBe(HALF_BLINKING, std::size(HALF_BLINKING));
+
+                            srand(vision_ui_driver_ticks_ms_get());
                         }
                         const auto config = lumenGetSystemConfig();
                         vision_ui_driver_font_set(config.normal);
