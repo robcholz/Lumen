@@ -15,8 +15,8 @@
 
 ---
 
-> A desktop-grade hardware project focused on interaction details,
-> for USB-C power monitoring and protection.
+> A hardware interaction node that lives on the desktop long-term,
+> built to carry sensing, feedback, and interaction logic.
 >
 > Open-sourced from hardware to firmware,
 > with a little fun beyond the serious functionality.
@@ -32,28 +32,40 @@
 
 ## What is Lumen?
 
-Lumen is a desktop USB-C power monitoring and protection device,
-made for developers and also friendly to non-professional users.
+Lumen is a desktop-grade hardware interaction node.
+It lives on the desktop long-term, can sense state, participate in interaction,
+and present and feed back those changes in hardware.
 
-We hope it is not only a debugging tool,
-but a device you can keep on your desk for long-term use.
+## Why we build Lumen?
 
-## Why build Lumen?
+Many desktop hardware projects start from a very specific use.
+At first, they seem quite useful, but as soon as you want to do a bit more, something feels off.
 
-Many open-source desktop power monitoring projects have these issues:
+I found that when people keep this kind of device on their desk long-term, problems slowly surface:
 
-- Only provide code, missing complete hardware materials, cannot truly reproduce
-- Require complex IDEs and toolchains, almost impossible for beginners
-- UI stuck at serial print or debug interfaces, hard to use long-term
+- Projects only focus on function validation, lack complete materials, and are hard to truly reproduce
+- Depend on complex IDEs and toolchains, with a high barrier to use
+- Interaction stays at serial or debug interfaces, not suitable for long-term use
 
-Lumen's goal is clear:
+These are tolerable while tinkering,
+but once it becomes something that is there every day, it feels awful.
 
-Let people without embedded or hardware backgrounds
-successfully build a USB-C power monitor that is "actually usable and pleasant to use".
+Lumen also started from a specific need.
+But as you work on it, you realize it should not stop at a single function.
+A more reasonable state is to keep it on the desk long-term,
+as a hardware interaction node that can continuously expand.
+
+**We hope this project can let people without embedded or hardware backgrounds
+successfully build a device that is "truly usable for the long term";
+and on top of that, it can sense states and participate in interaction,
+serving as a connection point between the system, software or games, and the real world.**
 
 For this, Lumen is designed from the beginning around
-"reproducibility" and "low barrier",
+"reproducibility" and "low barrier of use",
 keeping complexity inside the system rather than pushing it to the user.
+
+What you end up with is not a single function,
+but a hardware presence that can stay on the desk long-term and evolve with needs.
 
 ## Designed for "Reproducibility"
 
@@ -62,7 +74,7 @@ keeping complexity inside the system rather than pushing it to the user.
 - Hardware, firmware, and UI design are centralized in one repo
 - PCB Gerbers, BOM, and 3D enclosure files are fully open-sourced
 
-**You only need to follow the steps to fully reproduce it.**
+**You only need to follow the steps to fully reproduce the entire device.**
 
 ## Hardware and UI Preview
 
@@ -70,9 +82,9 @@ keeping complexity inside the system rather than pushing it to the user.
 
 ![](docs/usb.gif)
 
-**Minecraft easter egg**
+**Interact with the game "Minecraft"**
 
-![](docs/banner.gif)
+![](docs/mc_sync.gif)
 
 **Motion / interaction**
 
@@ -95,7 +107,7 @@ keeping complexity inside the system rather than pushing it to the user.
     - ESP32-C3
     - 240x240 display
     - Rotary encoder
-    - Power switch
+    - Power Switch
 
 ## Design Notes
 
