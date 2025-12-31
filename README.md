@@ -15,11 +15,11 @@
 
 ---
 
-> A hardware interaction node that lives on the desktop long-term,
-> built to carry sensing, feedback, and interaction logic.
+> A desktop hardware node that lets your computer, games, and system states
+> physically exist on your desk.
 >
-> Open-sourced from hardware to firmware,
-> with a little fun beyond the serious functionality.
+> Think of it as a Stream Deck,
+> but programmable at the firmware level — and fully open-source.
 
 ![](docs/banner.gif)
 
@@ -36,55 +36,47 @@ Lumen is a desktop-grade hardware interaction node.
 It lives on the desktop long-term, can sense state, participate in interaction,
 and present and feed back those changes in hardware.
 
-## Why we build Lumen?
+## Why Lumen?
 
-Many desktop hardware projects start from a very specific use.
-At first, they seem quite useful, but as soon as you want to do a bit more, something feels off.
+Lumen is designed to stay on your desk every day,
+as a hardware presence that keeps evolving with what you do.
 
-I found that when people keep this kind of device on their desk long-term, problems slowly surface:
+If you enjoy projects that connect software with the physical world,
+Lumen is built for you.
 
-- Projects only focus on function validation, lack complete materials, and are hard to truly reproduce
-- Depend on complex IDEs and toolchains, with a high barrier to use
-- Interaction stays at serial or debug interfaces, not suitable for long-term use
+## Build your own Lumen in under 10 minutes
 
-These are tolerable while tinkering,
-but once it becomes something that is there every day, it feels awful.
+- Flash firmware directly from your browser
+- No local IDE, no toolchain setup
+- All builds are produced by CI
+- Hardware files are fully open-sourced
 
-Lumen also started from a specific need.
-But as you work on it, you realize it should not stop at a single function.
-A more reasonable state is to keep it on the desk long-term,
-as a hardware interaction node that can continuously expand.
+👉 Start here: [Quick Start](docs/quick-start.md)
 
-**We hope this project can let people without embedded or hardware backgrounds
-successfully build a device that is "truly usable for the long term";
-and on top of that, it can sense states and participate in interaction,
-serving as a connection point between the system, software or games, and the real world.**
+## What people build with Lumen
 
-For this, Lumen is designed from the beginning around
-"reproducibility" and "low barrier of use",
-keeping complexity inside the system rather than pushing it to the user.
+- A physical Minecraft status display
+- A USB-C power monitor that lives on your desk
+- A system state notifier (CPU, build, deploy, errors)
+- A programmable interaction gadget for games and tools
 
-What you end up with is not a single function,
-but a hardware presence that can stay on the desk long-term and evolve with needs.
+Lumen is not a single-purpose device —
+it’s a hardware base you can repurpose.
 
-## Designed for "Reproducibility"
+## See it in action
 
-- No local development environment needed, flash firmware directly via web
-- All firmware is built and released by CI, avoiding environment differences
-- Hardware, firmware, and UI design are centralized in one repo
-- PCB Gerbers, BOM, and 3D enclosure files are fully open-sourced
+**Minecraft → Physical Device**
 
-**You only need to follow the steps to fully reproduce the entire device.**
+![](docs/mc_sync.gif)
+
+When something happens in Minecraft,
+your desk reacts in real time — lights, motion, and sound.
 
 ## Hardware and UI Preview
 
 **USB power monitoring**
 
 ![](docs/usb.gif)
-
-**Interact with the game "Minecraft"**
-
-![](docs/mc_sync.gif)
 
 **Motion / interaction**
 
@@ -152,6 +144,9 @@ you may find this article useful:
 - [ ] Documentation still improving
 
 ## Contributing
+
+If this project is useful or interesting to you,
+consider giving it a ⭐ — it really helps.
 
 Issues, discussions, and PRs are welcome.
 If you are interested in hardware, embedded systems, or UI design, feel free to join.
