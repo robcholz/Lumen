@@ -34,7 +34,8 @@ jobs:
         run: |
           set -e
           files=$(git ls-files '*.c' '*.cc' '*.cpp' '*.cxx' '*.h' '*.hpp' '*.hh' '*.hxx' \
-            | grep -v '^components/' \
+            | grep -v '^components/ina226' \
+            | grep -v '^components/u8g2' \
             | grep -v '^managed_components/' \
             | grep -v '^assets/')
           if [ -n "$files" ]; then
