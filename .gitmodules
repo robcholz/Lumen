@@ -1,3 +1,6 @@
 [submodule "components/u8g2"]
 	path = components/u8g2
 	url = https://github.com/olikraus/u8g2.git
+[submodule "third-party/vision-ui"]
+	path = third-party/vision-ui
+	url = https://github.com/robcholz/vision-ui.git

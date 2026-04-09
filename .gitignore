@@ -6,3 +6,4 @@ cmake-build-debug
 main/main_app/target
 .venv
 __pycache__/
+*.egg-info/

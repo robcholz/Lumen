@@ -1,6 +1,41 @@
-idf_component_register(
-    INCLUDE_DIRS "."
+set(VISION_UI_DIR ${CMAKE_CURRENT_LIST_DIR}/../../third-party/vision-ui)
+
+if(NOT EXISTS "${VISION_UI_DIR}/src/vision_ui_core.c")
+    message(FATAL_ERROR "third-party/vision-ui is missing. Run `git submodule update --init --recursive`.")
+endif()
+
+file(GLOB VISION_UI_SRCS
+        "${VISION_UI_DIR}/src/*.c"
 )
 
-add_prebuilt_library(vision_ui_lib "${CMAKE_CURRENT_LIST_DIR}/libvision_ui.a")
-target_link_libraries(${COMPONENT_LIB} INTERFACE vision_ui_lib)
+set(VISION_UI_DEFINES
+        CONFIG_VISION_UI_LIST_FRAME_FIXED_HEIGHT=35
+        CONFIG_VISION_UI_LIST_SELECTOR_FIXED_HEIGHT=35
+        CONFIG_VISION_UI_LIST_TITLE_TO_DISPLAY_TOP_PADDING=7
+        CONFIG_VISION_UI_LIST_TITLE_TO_FRAME_PADDING=10
+        CONFIG_VISION_UI_LIST_FRAME_BETWEEN_PADDING=0
+        CONFIG_VISION_UI_ICON_VIEW_TITLE_AREA_TO_DESCRIPTION_PADDING=10
+        CONFIG_VISION_UI_ICON_VIEW_TITLE_AREA_HEIGHT=75
+        CONFIG_VISION_UI_LIST_HEADER_TO_TEXT_PADDING=5
+        CONFIG_VISION_UI_LIST_FOOTER_RIGHT_TO_SCROLL_BAR_PADDING=5
+        CONFIG_VISION_UI_LIST_FOOTER_MAX_HEIGHT=20
+        CONFIG_VISION_UI_LIST_FOOTER_MAX_WIDTH=20
+        CONFIG_VISION_UI_LIST_HEADER_MAX_HEIGHT=24
+        CONFIG_VISION_UI_LIST_HEADER_MAX_WIDTH=13
+        CONFIG_VISION_UI_LIST_SLIDER_FOOTER_WIDTH=48
+        VISION_UI_LIB_IS_LIB
+)
+
+idf_component_register(
+        SRCS
+        ${VISION_UI_SRCS}
+        ${CMAKE_CURRENT_LIST_DIR}/vision_ui_lib.c
+        INCLUDE_DIRS
+        .
+        ${VISION_UI_DIR}/include
+        ${VISION_UI_DIR}/include/vision
+)
+
+target_compile_definitions(${COMPONENT_LIB} PRIVATE ${VISION_UI_DEFINES})
+target_compile_options(${COMPONENT_LIB} PRIVATE -fvisibility=hidden)
+target_link_options(${COMPONENT_LIB} PRIVATE -Wl,--exclude-libs,ALL)
