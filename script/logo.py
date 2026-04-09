@@ -1,27 +1,37 @@
+#!/usr/bin/env python3
 import argparse
 
 from PIL import Image
 
-parser = argparse.ArgumentParser()
-parser.add_argument("input", help="input PNG file")
-parser.add_argument("-o", "--output", default="output.png", help="output file")
-parser.add_argument("-i", "--inverted", action="store_true", help="invert the image")
-args = parser.parse_args()
 
-img = Image.open(args.input).convert("RGB")
-pixels = img.load()
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input", help="input PNG file")
+    parser.add_argument("-o", "--output", default="output.png", help="output file")
+    parser.add_argument(
+        "-i", "--inverted", action="store_true", help="invert the image"
+    )
+    args = parser.parse_args()
 
-width, height = img.size
+    img = Image.open(args.input).convert("RGB")
+    pixels = img.load()
 
-for y in range(height):
-    for x in range(width):
-        r, g, b = pixels[x, y]
+    width, height = img.size
 
-        if (r, g, b) != (255, 255, 255):
-            pixels[x, y] = (0, 0, 0)
-        else:
-            pixels[x, y] = (255, 255, 255)
+    for y in range(height):
+        for x in range(width):
+            r, g, b = pixels[x, y]
 
-img.save(args.output)
+            if (r, g, b) != (255, 255, 255):
+                pixels[x, y] = (0, 0, 0)
+            else:
+                pixels[x, y] = (255, 255, 255)
 
-print("Done! Saved as", args.output)
+    img.save(args.output)
+
+    print("Done! Saved as", args.output)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

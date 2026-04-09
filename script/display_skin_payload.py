@@ -2,11 +2,7 @@
 import argparse
 import sys
 from pathlib import Path
-
-try:
-    from PIL import Image
-except ImportError as exc:
-    raise SystemExit("Pillow is required: pip install pillow") from exc
+from PIL import Image
 
 
 def rgb565_to_rgb888_be(data: bytes, width: int, height: int) -> Image.Image:
@@ -32,7 +28,9 @@ def rgb565_to_rgb888_be(data: bytes, width: int, height: int) -> Image.Image:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Display an RGB565 big-endian payload.")
+    parser = argparse.ArgumentParser(
+        description="Display an RGB565 big-endian payload."
+    )
     parser.add_argument("file", help="Binary payload file")
     parser.add_argument("--width", type=int, required=True, help="Image width")
     parser.add_argument("--height", type=int, required=True, help="Image height")

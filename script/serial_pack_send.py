@@ -8,8 +8,12 @@ import serial
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Send a serial pack over USB Serial/JTAG.")
-    parser.add_argument("--port", default="/dev/cu.usbmodem1101", help="Serial device path")
+    parser = argparse.ArgumentParser(
+        description="Send a serial pack over USB Serial/JTAG."
+    )
+    parser.add_argument(
+        "--port", default="/dev/cu.usbmodem1101", help="Serial device path"
+    )
     parser.add_argument("--path", default="sync", help="Pack path (no spaces)")
     parser.add_argument("--data", help="Payload string")
     parser.add_argument("--file", help="Binary payload file")

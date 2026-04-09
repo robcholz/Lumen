@@ -133,6 +133,21 @@ you may find this article useful:
 
 - [Vision-UI: Designing a Lightweight UI System for Embedded Devices](https://www.robcholz.com/2025/11/16/vision-ui/)
 
+## Utility Scripts
+
+The Python helpers under `script/` are managed from the project-root `pyproject.toml`.
+
+Run them from the repository root with `uv`:
+
+```bash
+uv run lumen-png-to-rgb565-c --help
+uv run lumen-display-skin-payload --help
+uv run lumen-serial-pack-send --help
+uv run lumen-logo --help
+```
+
+If you prefer plain `pip`, `python -m pip install -e .` works as well.
+
 ## Project Status
 
 - [x] Hardware v2

@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 from pathlib import Path
-
-try:
-    from PIL import Image
-except ImportError:  # pragma: no cover
-    raise SystemExit("Pillow is required: pip install pillow")
+from PIL import Image
 
 
 def rgb_to_565(r, g, b):
@@ -17,7 +13,7 @@ def format_c_array(name, width, height, values):
 
     per_line = 12
     for i in range(0, len(values), per_line):
-        chunk = values[i: i + per_line]
+        chunk = values[i : i + per_line]
         line = ", ".join(f"0x{v:04X}" for v in chunk)
         lines.append(f"    {line},")
     lines.append("};")

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lumen-scripts"
+version = "0.1.0"
+description = "Python utilities for asset conversion and serial payload transport in Lumen."
+requires-python = ">=3.10"
+dependencies = [
+    "Pillow>=12.2.0",
+    "pyserial>=3.5",
+]
+
+[project.scripts]
+lumen-display-skin-payload = "display_skin_payload:main"
+lumen-logo = "logo:main"
+lumen-png-to-rgb565-c = "png_to_rgb565_c:main"
+lumen-serial-pack-send = "serial_pack_send:main"
+
+[tool.setuptools]
+py-modules = [
+    "display_skin_payload",
+    "logo",
+    "png_to_rgb565_c",
+    "serial_pack_send",
+]
+
+[tool.setuptools.package-dir]
+"" = "script"

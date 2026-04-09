@@ -132,6 +132,21 @@ Lumen会实时响应 — 灯光、动作与声音。
 
 - [Vision-UI：一个面向嵌入式设备的轻量级 UI 系统设计](https://www.robcholz.com/2025/11/16/vision-ui/)
 
+## 工具脚本
+
+`script/` 下面的 Python 工具现在统一由项目根目录的 `pyproject.toml` 管理。
+
+在仓库根目录执行：
+
+```bash
+uv run lumen-png-to-rgb565-c --help
+uv run lumen-display-skin-payload --help
+uv run lumen-serial-pack-send --help
+uv run lumen-logo --help
+```
+
+如果你不用 `uv`，也可以直接执行 `python -m pip install -e .`。
+
 ## 项目状态
 
 - [x] 硬件v2
